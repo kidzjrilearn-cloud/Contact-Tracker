@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact & Network Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen p-4 md:p-8">
+  <div class="max-w-4xl mx-auto space-y-6">
+    
+    <!-- Header -->
+    <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+      <div>
+        <h1 class="text-2xl font-bold text-slate-800">Contact Tracker</h1>
+        <p class="text-sm text-slate-500">Track meetings, relationships, and direct outreach</p>
+      </div>
+      <button onclick="openModal()" class="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition flex items-center justify-center gap-2 shadow-sm">
+        <i class="fa-solid fa-plus"></i> Add Contact
+      </button>
+    </header>
+
+    <!-- Search & Filter Bar -->
+    <div class="relative">
+      <i class="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-slate-400"></i>
+      <input type="text" id="searchInput" oninput="filterContacts()" placeholder="Search by name, email, or connection/context..." 
+        class="w-full pl-11 pr-4 py-3 bg-white rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+    </div>
+
+    <!-- Contact Cards Grid -->
+    <div id="contactGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Contacts rendered dynamically -->
+    </div>
+  </div>
+
+  <!-- Add/Edit Modal -->
+  <div id="contactModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-100 space-y-4">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h2 id="modalTitle" class="text-lg font-semibold text-slate-800">Add New Contact</h2>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <form id="contactForm" onsubmit="saveContact(event)" class="space-y-3">
+        <input type="hidden" id="contactId">
+        
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Full Name *</label>
+          <input type="text" id="contactName" required class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Phone Number (with country code) *</label>
+            <input type="tel" id="contactPhone" placeholder="+1234567890" required class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Email Address</label>
+            <input type="email" id="contactEmail" placeholder="name@example.com" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Connection / Context</label>
+            <input type="text" id="contactConnection" placeholder="e.g. Parent, Mentor, Partner" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Date First Met</label>
+            <input type="date" id="contactDateMet" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 border rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">Save Contact</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let contacts = JSON.parse(localStorage.getItem('saved_contacts') || '[]');
+
+    function saveToStorage() {
+      localStorage.setItem('saved_contacts', JSON.stringify(contacts));
+    }
+
+    function renderContacts(data = contacts) {
+      const grid = document.getElementById('contactGrid');
+      grid.innerHTML = '';
+
+      if (data.length === 0) {
+        grid.innerHTML = `<div class="col-span-full py-12 text-center text-slate-400 bg-white rounded-2xl border border-dashed border-slate-300">No contacts found. Click "Add Contact" to start.</div>`;
+        return;
+      }
+
+      data.forEach(c => {
+        const cleanPhone = c.phone.replace(/[^0-9]/g, '');
+        const card = document.createElement('div');
+        card.className = "bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between space-y-4 hover:border-blue-200 transition";
+        card.innerHTML = `
+          <div>
+            <div class="flex justify-between items-start mb-2">
+              <div>
+                <h3 class="font-bold text-slate-900 text-base">${c.name}</h3>
+                <span class="inline-block bg-slate-100 text-slate-600 text-xs px-2.5 py-0.5 rounded-full font-medium mt-1">
+                  ${c.connection || 'General Contact'}
+                </span>
+              </div>
+              <div class="flex gap-1">
+                <button onclick="editContact('${c.id}')" class="p-1.5 text-slate-400 hover:text-blue-600 transition"><i class="fa-solid fa-pen-to-square text-sm"></i></button>
+                <button onclick="deleteContact('${c.id}')" class="p-1.5 text-slate-400 hover:text-red-600 transition"><i class="fa-solid fa-trash text-sm"></i></button>
+              </div>
+            </div>
+            
+            <div class="space-y-1.5 text-xs text-slate-500 mt-3">
+              <p><i class="fa-solid fa-phone w-4 text-slate-400"></i> ${c.phone}</p>
+              ${c.email ? `<p><i class="fa-solid fa-envelope w-4 text-slate-400"></i> <a href="mailto:${c.email}" class="hover:underline">${c.email}</a></p>` : ''}
+              ${c.dateMet ? `<p><i class="fa-regular fa-calendar w-4 text-slate-400"></i> First Met: ${c.dateMet}</p>` : ''}
+            </div>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+            <a href="tel:${c.phone}" class="flex items-center justify-center gap-1.5 py-2 px-3 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-semibold transition">
+              <i class="fa-solid fa-phone"></i> Regular Call
+            </a>
+            <a href="https://wa.me/${cleanPhone}" target="_blank" class="flex items-center justify-center gap-1.5 py-2 px-3 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-semibold transition">
+              <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp
+            </a>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function openModal(editId = null) {
+      document.getElementById('contactForm').reset();
+      document.getElementById('contactId').value = '';
+      document.getElementById('modalTitle').textContent = editId ? 'Edit Contact' : 'Add New Contact';
+
+      if (editId) {
+        const item = contacts.find(c => c.id === editId);
+        if (item) {
+          document.getElementById('contactId').value = item.id;
+          document.getElementById('contactName').value = item.name;
+          document.getElementById('contactPhone').value = item.phone;
+          document.getElementById('contactEmail').value = item.email || '';
+          document.getElementById('contactConnection').value = item.connection || '';
+          document.getElementById('contactDateMet').value = item.dateMet || '';
+        }
+      }
+
+      const modal = document.getElementById('contactModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('contactModal');
+      modal.classList.remove('flex');
+      modal.classList.add('hidden');
+    }
+
+    function saveContact(e) {
+      e.preventDefault();
+      const id = document.getElementById('contactId').value;
+      const contactData = {
+        id: id || Date.now().toString(),
+        name: document.getElementById('contactName').value.trim(),
+        phone: document.getElementById('contactPhone').value.trim(),
+        email: document.getElementById('contactEmail').value.trim(),
+        connection: document.getElementById('contactConnection').value.trim(),
+        dateMet: document.getElementById('contactDateMet').value
+      };
+
+      if (id) {
+        contacts = contacts.map(c => c.id === id ? contactData : c);
+      } else {
+        contacts.unshift(contactData);
+      }
+
+      saveToStorage();
+      renderContacts();
+      closeModal();
+    }
+
+    function editContact(id) {
+      openModal(id);
+    }
+
+    function deleteContact(id) {
+      if (confirm('Delete this contact?')) {
+        contacts = contacts.filter(c => c.id !== id);
+        saveToStorage();
+        renderContacts();
+      }
+    }
+
+    function filterContacts() {
+      const q = document.getElementById('searchInput').value.toLowerCase();
+      const filtered = contacts.filter(c => 
+        c.name.toLowerCase().includes(q) || 
+        (c.email && c.email.toLowerCase().includes(q)) ||
+        (c.connection && c.connection.toLowerCase().includes(q))
+      );
+      renderContacts(filtered);
+    }
+
+    // Initial render
+    renderContacts();
+  </script>
+</body>
+</html>
